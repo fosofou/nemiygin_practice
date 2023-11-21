@@ -25,8 +25,8 @@ public:
         }
     }
 
-
-    void printMatrix() const {
+    void printMatrix(const char* name = "") const {
+        printf("Matrix %s: \n", name);
         for (const auto &row : data) {
             for (double elem : row) {
                 std::cout << elem << " ";
@@ -44,7 +44,6 @@ public:
             exit(1);
         }
     }
-
 
     Matrix addiction(const Matrix &other) const {
 
@@ -129,29 +128,17 @@ public:
 };
 
 int main() {
-    // std::vector<std::vector<double>> B = {{1.0, 2.0, },
-    //                                       {4.0, 5.0, }};
-    Matrix* matrix_B = new Matrix(2,2, {{4, 2}, {4.0, 5.0}});
-    // matrix_B->setElement(0,0,1);
-    printf("Матрица B \n");
-    matrix_B->printMatrix();
-    Matrix matrix_B2 = matrix_B->square();
-    printf("Матрица B^2 \n");
-    matrix_B2.printMatrix();
-    Matrix matrix_B3 = matrix_B->cube();
-    printf("Матрица B^3 \n");
-    matrix_B3.printMatrix();
+    Matrix matrix_B = Matrix(2,2, {{4, 2}, {4.0, 5.0}});
+    matrix_B.printMatrix("B");
+    Matrix matrix_B2 = matrix_B.square();
+    matrix_B2.printMatrix("B^2");
+    Matrix matrix_B3 = matrix_B.cube();
+    matrix_B3.printMatrix("B^3");
     Matrix matrix_I = Matrix::identity(2);
-    Matrix multiplyB_B2 = matrix_B->addiction(matrix_B2);
-    printf("сложение B + B^2 \n");
-    multiplyB_B2.printMatrix();
-    double trace_result = Matrix::trace(multiplyB_B2);
-    printf("След %f \n", trace_result);
-    Matrix multiplyTrace_I = matrix_I.multiply(trace_result);
-    printf("Единичная матрица * след \n");
-    multiplyTrace_I.printMatrix();
-    Matrix matrix_A = matrix_B3.addiction(multiplyTrace_I);
-    printf("Матрица А \n");
-    matrix_A.printMatrix();
+    matrix_I.printMatrix("I");
+    double trace_result = Matrix::trace(matrix_B.addiction(matrix_B2));
+    printf("След: Tr(B + B^2) = %f \n", trace_result);
+    Matrix matrix_A = matrix_B3.addiction(matrix_I.multiply(trace_result));
+    matrix_A.printMatrix("A");
     return 0;
 };
