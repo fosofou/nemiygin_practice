@@ -3,9 +3,15 @@
 #include <vector>
 #include <iostream>
 #include "matrix.h"
+#include "openmp_settings.h"
+#include "omp.h"
+#include <random>
 
-
-Matrix::Matrix(size_t rows, size_t cols, const std::vector<std::vector<double>> &initialData) {
+Matrix::Matrix(
+    size_t rows, 
+    size_t cols, 
+    const std::vector<std::vector<double>> &initialData
+    ) {
     if (!initialData.empty() && (initialData.size() != rows || initialData[0].size() != cols)) {
         std::cerr << "Некорректные размеры для инициализации матрицы" << std::endl;
         exit(1);
@@ -13,6 +19,7 @@ Matrix::Matrix(size_t rows, size_t cols, const std::vector<std::vector<double>> 
     
     this->cols = cols;
     this->rows = rows;
+    
     if (!initialData.empty()) {
         this->data = initialData;
     } else {
@@ -20,7 +27,11 @@ Matrix::Matrix(size_t rows, size_t cols, const std::vector<std::vector<double>> 
     }
 }
 
-void Matrix::printMatrix(const char* name) const {
+int Matrix::get_size() const {
+    return rows;
+}
+
+void Matrix::print_matrix(const char* name) const {
     printf("Matrix %s: \n", name);
     for (const auto &row : data) {
         for (double elem : row) {
@@ -31,7 +42,7 @@ void Matrix::printMatrix(const char* name) const {
     std::cout << "\n"; 
 }
 
-void Matrix::setElement(size_t row, size_t col, double value) {
+void Matrix::set_element(size_t row, size_t col, double value) {
     if (row < rows && col < cols) {
         data[row][col] = value;
     } else {
@@ -48,9 +59,11 @@ Matrix Matrix::addiction(const Matrix &other) const {
     }
 
     Matrix result(rows, cols);
+    size_t i,j;
 
-    for (size_t i = 0; i < rows; ++i) {
-        for (size_t j = 0; j < cols; ++j) {
+    #pragma omp parallel for private(i,j) shared(result, other, data)
+    for (i = 0; i < rows; ++i) {
+        for (j = 0; j < cols; ++j) {
             result.data[i][j] = data[i][j] + other.data[i][j];
         }
     }
@@ -67,28 +80,51 @@ Matrix Matrix::multiply(const Matrix &other) const {
 
     Matrix result(rows, cols);
 
-    for (size_t i = 0; i < rows; ++i) {
-        for (size_t j = 0; j < other.cols; ++j) {
-            for (size_t k = 0; k < cols; ++k) {
+    double start_time = omp_get_wtime();
+    size_t i,j,k;
+
+    #pragma omp parallel for private(i,j,k) shared(result, other, data) 
+    for (i = 0; i < rows; ++i) {
+        for (j = 0; j < other.cols; ++j) {
+            for (k = 0; k < cols; ++k) {
                 result.data[i][j] += data[i][k] * other.data[k][j]; 
             }
         }
     }
-
+        
     return result;
 }
 
+
 Matrix Matrix::multiply(double scalar) const {
     Matrix result(rows, cols);
-
-    for (size_t i = 0; i < rows; ++i) {
-        for (size_t j = 0; j < cols; ++j) {
+    size_t i,j,k;
+    #pragma omp parallel for private(i,j,k) shared(result, data, scalar)
+    for (i = 0; i < rows; ++i) {
+        for (j = 0; j < cols; ++j) {
             result.data[i][j] = data[i][j] * scalar;
         }
     }
 
     return result;
 }  
+
+void Matrix::fill_random(unsigned int seed, double minValue, double maxValue) {
+    // Установка seed
+    srand(seed);
+    #pragma omp parallel for collapse(2) shared(data)
+    for (size_t i = 0; i < rows; ++i) {
+        for (size_t j = 0; j < cols; ++j) {
+            double randomNumber = minValue + static_cast<double>(rand()) / RAND_MAX * (maxValue - minValue);
+            #pragma omp critical
+            {
+                data[i][j] = randomNumber;
+            }
+        }
+    }
+}
+
+
 
 Matrix Matrix::square() const {
     return multiply(*this);
@@ -109,31 +145,17 @@ Matrix Matrix::identity(size_t size) {
 }
 
 double Matrix::trace(const Matrix &matrix) {
+
     if (matrix.rows == matrix.cols) {
         double result = 0.0;
-        for (size_t i = 0; i < matrix.rows; ++i) {
+        size_t i;
+        #pragma omp parallel for private(i) reduction (+:result)
+        for (i = 0; i < matrix.rows; ++i) {
             result += matrix.data[i][i];
         }
         return result;
     } else {
-        std::cerr << "Невозможно вычислить след матрицы: матрица не квадратная" << std::endl;
-        exit(1);    
+        throw std::invalid_argument( "Невозможно вычислить след матрицы: матрица не квадратная" );    
     }
 }
 
-
-// int main() {
-//     Matrix matrix_B = Matrix(2,2, {{4, 2}, {4.0, 5.0}});
-//     matrix_B.printMatrix("B");
-//     Matrix matrix_B2 = matrix_B.square();
-//     matrix_B2.printMatrix("B^2");
-//     Matrix matrix_B3 = matrix_B.cube();
-//     matrix_B3.printMatrix("B^3");
-//     Matrix matrix_I = Matrix::identity(2);
-//     matrix_I.printMatrix("I");
-//     double trace_result = Matrix::trace(matrix_B.addiction(matrix_B2));
-//     printf("След: Tr(B + B^2) = %f \n", trace_result);
-//     Matrix matrix_A = matrix_B3.addiction(matrix_I.multiply(trace_result));
-//     matrix_A.printMatrix("A");
-//     return 0;
-// };
