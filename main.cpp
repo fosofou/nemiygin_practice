@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include "omp.h"
 #include <random>
+#include <ctime>
 
 class OpenMPSettings {
 private:
@@ -154,7 +155,6 @@ Matrix Matrix::multiply(const Matrix &other) const {
     return result;
 }
 
-
 Matrix Matrix::multiply(double scalar) const {
     Matrix result(rows, cols);
     size_t i,j,k;
@@ -182,8 +182,6 @@ void Matrix::fill_random(unsigned int seed, double minValue, double maxValue) {
         }
     }
 }
-
-
 
 Matrix Matrix::square() const {
     return multiply(*this);
@@ -218,9 +216,6 @@ double Matrix::trace(const Matrix &matrix) {
     }
 }
 
-
-
-
 Matrix calculate(Matrix B) {
     Matrix matrix_B2 = B.square();
     Matrix matrix_B3 = B.cube();
@@ -247,6 +242,12 @@ double get_avg_time(int runs_count, Matrix B) {
 }
 
 int main(int argc, char* argv[]) {
+        // current date/time based on current system
+    time_t now = time(0);
+
+    // convert now to string form
+    char* dt = ctime(&now);
+    std::cout << "The local date and time is: " << dt << std::endl;
     std::vector<int> matrix_size = { 100, 300, 500, 700 };
 
     for (size_t i = 0; i < matrix_size.size(); i++) {
@@ -269,3 +270,4 @@ int main(int argc, char* argv[]) {
 
     return 0;
 }
+
